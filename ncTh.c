@@ -20,7 +20,8 @@ int l_flag;
 #define PORT "3490"
 #define BACKLOG 10
 #define MAXDATASIZE 100
-
+void* sending(int new_fd);
+void* receiving(int new_fd);
 
 void sigchld_handler(int s)
 {
@@ -143,31 +144,41 @@ int main(int argc, char **argv) {
 //            exit(0);
 //        }
 //        //close(new_fd);  // parent doesn't need this
-        while (1) {
-            int numbytes;
-            char buf[512];
-            int count;
-            char str[100];
-            scanf("%s", str);
-            send(new_fd, str, strlen(str), 0);
-//            count = recv(new_fd,buf,512,0);
-//            if(count>0){
-//                printf("%s",buf);
+//        while (1) {
+//            int numbytes;
+//            char buf[512];
+//            int count;
+//            char str[100];
+//            scanf("%s", str);
+//            send(new_fd, str, strlen(str), 0);
+////            count = recv(new_fd,buf,512,0);
+////            if(count>0){
+////                printf("%s",buf);
+////            
+////            }
+//            if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
+//                perror("recv");
+//
+//            }
+//            else if (numbytes == 0) {
+//                //stop = 1;
+//                return 0;
 //            
 //            }
-            if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-                perror("recv");
-
-            }
-            buf[numbytes] = '\0';
-            if (sizeof buf > 1) {
-             printf("client: received '%s'\n",buf);
-            }
-
-//           
-            
-        }
-         exit(0);
+//            buf[numbytes] = '\0';
+//            printf("client: received '%s'\n",buf);
+//            
+//
+////           
+//            
+//        }
+//         exit(0);
+//        sending(new_fd);
+//        receiving(new_fd);
+// creating thread for 
+        pthread_t threads[2];
+        int t_1 =  pthread_create(&threads[0],NULL,sending,new_fd);
+        int t_2 =  pthread_create(&threads[1],NULL,receiving,new_fd);
         
     }
     
@@ -175,4 +186,36 @@ int main(int argc, char **argv) {
     
     
 
+}
+
+
+void* sending(int new_fd){
+    while (1) {
+        int numbytes;
+        char str[512];
+        scanf("%s",str);
+        send(new_fd, str, strlen(str), 0);
+    }
+    return 0;
+}
+
+void* receiving(int new_fd){
+    while (1) {
+        int numbytes;
+        char buf[512];
+        if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
+            perror("recv");
+
+        }
+        else if (numbytes == 0) {
+            //stop = 1;
+            return 0;
+
+        }
+        buf[numbytes] = '\0';
+        printf("%s",buf);
+        
+        
+    }
+    return 0;
 }
