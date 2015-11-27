@@ -17,6 +17,13 @@
 
 
 int l_flag;
+int k_flag;
+int v_flag;
+int r_flag;
+int p_flag;
+int w_flag;
+int port_num;
+int time_out_count;
 #define PORT "3490"
 #define BACKLOG 10
 #define MAXDATASIZE 100
@@ -64,7 +71,54 @@ int main(int argc, char **argv) {
     int yes=1;
     char s[INET6_ADDRSTRLEN];
     int rv;
+    int opt;
     
+    //*****************************************************************************************
+    
+    while ((opt = getopt(argc, argv, "klvrpw")) != -1) {
+        switch (opt) {
+            case 'l':
+                l_flag = 1;
+                printf("%s\n","l found");
+                break;
+            case 'k':
+                k_flag = 1;
+                printf("%s\n","k found");
+                break;
+            case 'v':
+                v_flag = 1;
+                printf("%s\n","v found");
+                break;
+            case 'r':
+                r_flag = 1;
+                printf("%s\n","r found");
+                break;
+            case 'p':
+                r_flag = 1;
+                printf("%s\n","p found");
+                //port_num = atoi(optarg);
+                //printf("%d",port_num);
+                break;
+            case 'w':
+                w_flag = 1;
+                printf("%s\n","w found");
+                time_out_count = atoi(optarg);
+                break;
+            
+            default: /* '?' */
+                fprintf(stderr, "Usage: %s [-t nsecs] [-n] name\n",
+                        argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
+    argc -= optind;
+    argv += optind;
+    if ((l_flag == 1) &&( p_flag == 1)){
+        perror("cannot use -s and -l");
+        exit(0);
+    }
+    //*****************************************************************************************
+
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -175,7 +229,7 @@ int main(int argc, char **argv) {
 //         exit(0);
 //        sending(new_fd);
 //        receiving(new_fd);
-// creating thread for 
+// creating thread for
         pthread_t threads[2];
         int t_1 =  pthread_create(&threads[0],NULL,sending,new_fd);
         int t_2 =  pthread_create(&threads[1],NULL,receiving,new_fd);
