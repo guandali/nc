@@ -458,10 +458,7 @@ int client_connect(char* hostname,char* port, struct addrinfo hints){
     
     pthread_t thread_id;
     pthread_create( &thread_id , NULL ,  read_write , sockfd);
-    
-    while (1) {
-    
-    }
+    pthread_join(thread_id,NULL);
     
     close(sockfd);
     
