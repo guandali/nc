@@ -20,6 +20,7 @@
 
 
 
+
 //int l_flag;
 //int k_flag;
 //int v_flag;
@@ -30,6 +31,8 @@
 //int time_out_count;
 int kflag, lflag, vflag, rflag, pflag, wflag, opt;
 int client_state = 1;
+int source_port;
+int timeout;
 #define PORT "3490"
 #define BACKLOG 10
 #define MAXDATASIZE 100
@@ -79,7 +82,7 @@ int main(int argc, char **argv) {
     socklen_t sin_size;
     struct sigaction sa;
     int yes=1;
-    char s[INET6_ADDRSTRLEN];
+    char s[INET_ADDRSTRLEN];
     //int rv;
     
     
@@ -130,8 +133,7 @@ int main(int argc, char **argv) {
     //*****************************************************************************************
     ///////////////////////// handling arguments ////////////////////////////
 
-    int source_port;
-    int timeout;
+    
     char * hostname = NULL;
     char* port ;
     
@@ -213,6 +215,9 @@ int main(int argc, char **argv) {
         printf("%s\n","local host mode");
         local_listen(hostname,port,hints);
         
+    }
+    else{
+        client_connect( hostname,port,  hints);
     }
     
 //    if ((rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0) {
@@ -311,7 +316,6 @@ int main(int argc, char **argv) {
     return 0;
     
     
-
 }
 
 
@@ -327,7 +331,7 @@ int local_listen(char*hostname,char*port, struct addrinfo hints){
     socklen_t sin_size;
     struct sigaction sa;
     int yes=1;
-    char s[INET6_ADDRSTRLEN];
+    char s[INET_ADDRSTRLEN];
     int rv;
     hints.ai_flags = AI_PASSIVE;
     if ((rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0) {
@@ -450,18 +454,34 @@ int local_listen(char*hostname,char*port, struct addrinfo hints){
 
 }
 
+void handle_timeout(int sig) {
+    printf("TIME OUT\n");
+    exit(0);
+}
+
 void* sending(int new_fd){
+    printf("Sending Thread Created\n");
     while (1) {
+        if (wflag && !lflag) {
+            signal(SIGALRM, handle_timeout);
+            alarm(timeout);
+        }
         //int numbytes;
         char str[512];
         scanf("%s",str);
+        str[strlen(str)] = '\n';
         send(new_fd, str, strlen(str), 0);
     }
     return 0;
 }
 
 void* receiving(int new_fd){
+    printf("Receiving Thread Created\n");
     while (1) {
+        if (wflag && !lflag) {
+            signal(SIGALRM, handle_timeout);
+            alarm(timeout);
+        }
         int numbytes;
         char buf[512];
         if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
@@ -483,6 +503,7 @@ void* receiving(int new_fd){
 }
 // read_write handle read and write at te same time
 
+
 void* read_write(int new_fd){
     
     pthread_t threads[2];
@@ -491,11 +512,65 @@ void* read_write(int new_fd){
     
 
 }
-int client_connect(char* hostname,char* port, struct addrinfo){
+int client_connect(char* hostname,char* port, struct addrinfo hints){
     int rv;
+    int numbytes;
+    char buf[100];
+    int sockfd;
+    struct addrinfo *servinfo, *p;
+    char s[INET_ADDRSTRLEN];
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
+    if ((rv = getaddrinfo(hostname, port, &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 1;
+    }
+    for(p = servinfo; p != NULL; p = p->ai_next) {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype,
+                             p->ai_protocol)) == -1) {
+            perror("client: socket");
+            continue;
+        }
+        
+        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(sockfd);
+            perror("client: connect");
+            continue;
+        }
+        
+        break;
+    }
+    if (p == NULL) {
+        fprintf(stderr, "client: failed to connect\n");
+        return 2;
+    }
+    
+    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
+              s, sizeof s);
+    printf("client: connecting to %s\n", s);
+    
+    freeaddrinfo(servinfo); // all done with this structure
+    
+    //if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+    //    perror("recv");
+    //    exit(1);
+    //}
+    
+    //buf[numbytes] = '\0';
+    
+    //printf("client: received '%s'\n",buf);
+    
+    pthread_t thread_id;
+    pthread_create( &thread_id , NULL ,  read_write , sockfd);
+    
+    while (1) {
+    
+    }
+    
+    close(sockfd);
+    
+    return 0;
     
     
 
