@@ -24,11 +24,9 @@ int timeout;
 #define PORT "3490"
 #define BACKLOG 10
 #define MAXDATASIZE 100
-void* sending(int new_fd);
-void* receiving(int new_fd);
+
 int local_listen(char* hostname,char* port, struct addrinfo);
 int client_connect(char* hostname,char* port, struct addrinfo);
-void* read_write(int new_fd);
 void* readWrite(int new_fd);
 
 void sigchld_handler(int s)
@@ -104,29 +102,7 @@ int main(int argc, char **argv) {
 
     }
     port = argv[optind];
-    
-    if (kflag) {
-        printf("%s\n", "K");
-    }
-    if (lflag) {
-        printf("%s\n", "L");
-    }
-    if (vflag) {
-        printf("%s\n", "V");
-    }
-    if (rflag) {
-        printf("%s\n", "R");
-    }
-    if (pflag) {
-        printf("%s\n", "P");
-    }
-    if (wflag) {
-        printf("%s\n", "W");
-    }
-    printf("%s\n", source_port);
-    printf("%i\n", timeout);
-    printf("%s\n", hostname);
-    printf("%s\n", port);
+
     if((kflag && !lflag) || (lflag && pflag) || (rflag && !lflag) || (lflag && (hostname != NULL)) || (!lflag && (hostname == NULL)) || (port == NULL)) {
         usage("");
         exit(EXIT_FAILURE);
@@ -147,6 +123,135 @@ int main(int argc, char **argv) {
     }
         
     return 0;
+}
+
+void handle_timeout(int sig) {
+    exit(0);
+}
+
+void* readWrite(int new_fd) {
+    int pid;
+    if(!(pid = fork())) {
+        while (1) {
+            if (wflag && !lflag) {
+                signal(SIGALRM, handle_timeout);
+                alarm(timeout);
+            }
+
+            //int numbytes;
+            char str[512] = "";
+            int len = scanf("%s",str);
+            str[strlen(str)] = '\n';
+            str[strlen(str)] = '\0';
+            int id = 0;
+            if ((id = send(new_fd, str, strlen(str), 0)) == -1) {
+                close(new_fd);
+                exit(0);
+            } else if (id == 0) {
+                close(new_fd);
+                exit(0);
+            }
+            if (count < 0 && !lflag) {
+                close(new_fd);
+                exit(0);
+            }
+        }
+    }
+    
+    while (1) {
+        if (wflag && !lflag) {
+            signal(SIGALRM, handle_timeout);
+            alarm(timeout);
+        }
+        int numbytes;
+        char buf[512];
+        if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
+            count--;
+            perror("recv");
+            if (count == 0 && !kflag) {
+                exit(0);
+            }
+            kill(pid, SIGKILL);
+            return 0;
+        }
+        else if (numbytes == 0) {
+            count--;
+            if (count == 0 && !kflag) {
+                exit(0);
+            }
+            kill(pid, SIGKILL);
+            return 0;
+
+        }
+        buf[numbytes] = '\0';
+        printf("%s",buf);
+                
+    }
+
+}
+
+int client_connect(char* hostname,char* port, struct addrinfo hints){
+    int rv;
+    int numbytes;
+    char buf[100];
+    int sockfd;
+    struct addrinfo *servinfo, *p;
+    char s[INET_ADDRSTRLEN];
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+
+    if ((rv = getaddrinfo(hostname, port, &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 1;
+    }
+    for(p = servinfo; p != NULL; p = p->ai_next) {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype,
+                             p->ai_protocol)) == -1) {
+            perror("client: socket");
+            continue;
+        }
+        
+        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(sockfd);
+            perror("client: connect");
+            continue;
+        }
+        
+        break;
+    }
+
+    if (p == NULL) {
+        fprintf(stderr, "client: failed to connect\n");
+        return 2;
+    }
+
+    if (pflag) {
+		struct sockaddr_in addrForSourcePort;
+		addrForSourcePort.sin_family =AF_INET;
+		addrForSourcePort.sin_port = htons(atoi(source_port));
+		addrForSourcePort.sin_addr.s_addr = INADDR_ANY;
+		bind(sockfd, (struct sockaddr*)&addrForSourcePort, sizeof addrForSourcePort);
+	}  
+    
+    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
+              s, sizeof s);
+    printf("client: connecting to %s\n", s);
+    
+    freeaddrinfo(servinfo); // all done with this structure
+    
+    pthread_t thread_id;
+    pthread_create( &thread_id , NULL ,  readWrite , sockfd);
+    
+    while (1) {
+    
+    }
+    
+    close(sockfd);
+    
+    return 0;
+    
 }
 
 int local_listen(char*hostname,char*port, struct addrinfo hints){
@@ -213,263 +318,49 @@ int local_listen(char*hostname,char*port, struct addrinfo hints){
     
     int max = 1;
     if (rflag)
-    	max = 2;
+        max = 2;
     while (1) {
 
-    	while(count < max) {
-    		int new_fd;
-    		printf("%s\n", "LOOPING");
-    		printf("%s", "Count = ");
-    		printf("%i\n", count);
-    		sin_size = sizeof their_addr;
-        	new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
-        	count++;
-        	printf("%s", "Count = ");
-    		printf("%i\n", count);
-	        if (new_fd == -1) {
-	            perror("accept");
-	            continue;
-	        }
-	        
-	        inet_ntop(their_addr.ss_family,
-	                  get_in_addr((struct sockaddr *)&their_addr),
-	                  s, sizeof s);
-	        printf("server: got connection from %s\n", s);
+        while(count < max) {
+            int new_fd;
+            sin_size = sizeof their_addr;
+            new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
+            count++;
+            if (new_fd == -1) {
+                perror("accept");
+                continue;
+            }
+            
+            inet_ntop(their_addr.ss_family,
+                      get_in_addr((struct sockaddr *)&their_addr),
+                      s, sizeof s);
+            printf("server: got connection from %s\n", s);
 
-	        if(1) {
-	        	pthread_t thread_id;
-	        	pthread_create( &thread_id , NULL ,  readWrite , new_fd);
-	        	//pthread_join(thread_id, NULL);
-	        	//printf("%s\n", "KILLED");
-	        	//exit(0);
-	        }
+            pthread_t thread_id;
+            pthread_create( &thread_id , NULL ,  readWrite , new_fd);
     
-	        if (vflag) {
-	            if (lflag) {
-	                printf("Connection from %s %s port [%s/%s] succeeded!\n",
-	                       s, port, "udp" , "tcp",
-	                       servinfo ? p : "*");
-	                fprintf(stderr,"Connection from %s %s port [%s/%s] succeeded!\n",
-	                        s, port, "udp" , "tcp",
-	                        servinfo ? p : "*");
-	            }
-	            else {
-	                printf("Connection to %s %s port [%s/%s] succeeded!\n",
-	                       hostname, port, "udp" , "tcp",
-	                       servinfo ? p : "*");
-	                fprintf(stderr, "Connection to %s %s port [%s/%s] succeeded!\n",
-	                        hostname, port, "udp" , "tcp",
-	                        servinfo ? p :"*");
-	                
-	            }
-	        }
-    	}
+            if (vflag) {
+                if (lflag) {
+                    printf("Connection from %s %s port [%s/%s] succeeded!\n",
+                           s, port, "udp" , "tcp",
+                           servinfo ? p : "*");
+                    fprintf(stderr,"Connection from %s %s port [%s/%s] succeeded!\n",
+                            s, port, "udp" , "tcp",
+                            servinfo ? p : "*");
+                }
+                else {
+                    printf("Connection to %s %s port [%s/%s] succeeded!\n",
+                           hostname, port, "udp" , "tcp",
+                           servinfo ? p : "*");
+                    fprintf(stderr, "Connection to %s %s port [%s/%s] succeeded!\n",
+                            hostname, port, "udp" , "tcp",
+                            servinfo ? p :"*");
+                    
+                }
+            }
+        }
     }
     close(sockfd);  // close
     return 0;            
-}
-
-void handle_timeout(int sig) {
-    printf("TIME OUT\n");
-    exit(0);
-}
-
-void* sending(int new_fd){
-    printf("Sending Thread Created\n");
-    while (1) {
-        if (wflag && !lflag) {
-            signal(SIGALRM, handle_timeout);
-            alarm(timeout);
-        }
-        //int numbytes;
-        char str[512] = "";
-        printf("%s\n", "Server scaning");
-        int len = scanf("%s",str);
-        str[strlen(str)] = '\n';
-        str[strlen(str)] = '\0';
-        printf("%i\n", strlen(str));
-        int id = 0;
-        if ((id = send(new_fd, str, strlen(str), 0)) == -1) {
-            return 0;
-        } else if (id == 0) {
-            return 0;
-        }
-        if (count < 0 && !lflag) {
-        	printf("%s\n", "BREAK");
-        	exit(0);
-        }
-    }
-}
-
-void* receiving(int new_fd){
-    printf("Receiving Thread Created\n");
-    while (1) {
-        if (wflag && !lflag) {
-            signal(SIGALRM, handle_timeout);
-            alarm(timeout);
-        }
-        int numbytes;
-        char buf[512];
-        if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
-            count--;
-            printf("%s", "Count = ");
-    		printf("%i\n", count);
-            perror("recv");
-            return 0;
-        }
-        else if (numbytes == 0) {
-            count--;
-            printf("%s", "Count = ");
-    		printf("%i\n", count);
-            return 0;
-
-        }
-        buf[numbytes] = '\0';
-        printf("%s",buf);
-        
-        
-    }
-}
-
-
-void* read_write(int new_fd){
-    
-    pthread_t t1, t2;
-    pthread_create(&t1,NULL,sending,new_fd);
-    pthread_create(&t2,NULL,receiving,new_fd);
-    //pthread_join(t1, NULL);
-    pthread_join(t2, NULL);
-    pthread_kill(t1, 0);
-    printf("%s\n", "SUB KILLED");    
-}
-
-void* readWrite(int new_fd) {
-    if(!fork()) {
-        printf("Sending Thread Created\n");
-        while (1) {
-            if (wflag && !lflag) {
-                signal(SIGALRM, handle_timeout);
-                alarm(timeout);
-            }
-            //int numbytes;
-            char str[512] = "";
-            int len = scanf("%s",str);
-            str[strlen(str)] = '\n';
-            str[strlen(str)] = '\0';
-            int id = 0;
-            if ((id = send(new_fd, str, strlen(str), 0)) == -1) {
-                exit(0);
-            } else if (id == 0) {
-                exit(0);
-            }
-            if (count < 0 && !lflag) {
-                printf("%s\n", "BREAK");
-                exit(0);
-            }
-        }
-    }
-    
-    printf("Receiving Thread Created\n");
-    while (1) {
-        if (wflag && !lflag) {
-            signal(SIGALRM, handle_timeout);
-            alarm(timeout);
-        }
-        int numbytes;
-        char buf[512];
-        if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
-            count--;
-            printf("%s", "Count = ");
-            printf("%i\n", count);
-            perror("recv");
-            if (count == 0 && !kflag) {
-                exit(0);
-            }
-            return 0;
-        }
-        else if (numbytes == 0) {
-            count--;
-            printf("%s", "Count = ");
-            printf("%i\n", count);
-            if (count == 0 && !kflag) {
-                exit(0);
-            }
-            return 0;
-
-        }
-        buf[numbytes] = '\0';
-        printf("%s",buf);
-        
-        
-    }
-
-}
-
-int client_connect(char* hostname,char* port, struct addrinfo hints){
-    int rv;
-    int numbytes;
-    char buf[100];
-    int sockfd;
-    struct addrinfo *servinfo, *p;
-    char s[INET_ADDRSTRLEN];
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-
-
-    if ((rv = getaddrinfo(hostname, port, &hints, &servinfo)) != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 1;
-    }
-    for(p = servinfo; p != NULL; p = p->ai_next) {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-                             p->ai_protocol)) == -1) {
-            perror("client: socket");
-            continue;
-        }
-        
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(sockfd);
-            perror("client: connect");
-            continue;
-        }
-        
-        break;
-    }
-
-    if (p == NULL) {
-        fprintf(stderr, "client: failed to connect\n");
-        return 2;
-    }
-
-    if (pflag) {
-		struct sockaddr_in addrForSourcePort;
-		addrForSourcePort.sin_family =AF_INET;
-		addrForSourcePort.sin_port = htons(atoi(source_port));
-		addrForSourcePort.sin_addr.s_addr = INADDR_ANY;
-		bind(sockfd, (struct sockaddr*)&addrForSourcePort, sizeof addrForSourcePort);
-	}  
-    
-    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
-              s, sizeof s);
-    printf("client: connecting to %s\n", s);
-    
-    freeaddrinfo(servinfo); // all done with this structure
-    
-    pthread_t thread_id;
-    pthread_create( &thread_id , NULL ,  read_write , sockfd);
-    
-    while (1) {
-    
-    }
-    
-    close(sockfd);
-    
-    return 0;
-    
-    
-
-
-
 }
 
