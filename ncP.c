@@ -351,8 +351,8 @@ void* read_write(int new_fd){
     rfds[0].events = POLLIN;
     //standard
     int rv;
-    rfds[1].fd = new_fd;
-    rfds[1].events = POLLOUT;
+    rfds[1].fd = fileno(stdin);
+    rfds[1].events = POLLIN;
     rv = poll(rfds, 2, 5000);
     if (rv == -1) {
         perror("poll"); // error occurred in poll()
