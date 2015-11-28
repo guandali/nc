@@ -318,7 +318,7 @@ int local_listen(char*hostname,char*port, struct addrinfo hints){
     
     int max = 1;
     if (rflag)
-        max = 2;
+        max = 10;
     while (1) {
 
         while(count < max) {
