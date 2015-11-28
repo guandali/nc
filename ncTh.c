@@ -17,21 +17,9 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-
-
-
-
-//int l_flag;
-//int k_flag;
-//int v_flag;
-//int r_flag;
-//int p_flag;
-//int w_flag;
-//int port_num;
-//int time_out_count;
 int kflag, lflag, vflag, rflag, pflag, wflag, opt;
-int client_state = 1;
-int source_port;
+int count = 0;
+char* source_port;
 int timeout;
 #define PORT "3490"
 #define BACKLOG 10
@@ -41,6 +29,7 @@ void* receiving(int new_fd);
 int local_listen(char* hostname,char* port, struct addrinfo);
 int client_connect(char* hostname,char* port, struct addrinfo);
 void* read_write(int new_fd);
+void* readWrite(int new_fd);
 
 void sigchld_handler(int s)
 {
@@ -65,17 +54,6 @@ void *get_in_addr(struct sockaddr *sa)
 
 int main(int argc, char **argv) {
 
-    // This is some sample code feel free to delete it
-    // This is the main program for the thread version of nc
-    
-//    int i;
-//
-//    for (i = 0; i < argc; i++) {
-//      fprintf(stderr, "Arg %d is: %s\n", i, argv[i]);
-//      usage(argv[0]);
-//    }
-//
-//    return 0;
     int sockfd, new_fd;  // listen on sock_fd, new connection on new_fd
     struct addrinfo hints, *servinfo, *p;
     struct sockaddr_storage their_addr; // connector's address information
@@ -83,54 +61,7 @@ int main(int argc, char **argv) {
     struct sigaction sa;
     int yes=1;
     char s[INET_ADDRSTRLEN];
-    //int rv;
-    
-    
-    //*****************************************************************************************
-//    
-//    while ((opt = getopt(argc, argv, "klvrpw")) != -1) {
-//        switch (opt) {
-//            case 'l':
-//                l_flag = 1;
-//                printf("%s\n","l found");
-//                break;
-//            case 'k':
-//                k_flag = 1;
-//                printf("%s\n","k found");
-//                break;
-//            case 'v':
-//                v_flag = 1;
-//                printf("%s\n","v found");
-//                break;
-//            case 'r':
-//                r_flag = 1;
-//                printf("%s\n","r found");
-//                break;
-//            case 'p':
-//                r_flag = 1;
-//                printf("%s\n","p found");
-//                //port_num = atoi(optarg);
-//                //printf("%d",port_num);
-//                break;
-//            case 'w':
-//                w_flag = 1;
-//                printf("%s\n","w found");
-//                time_out_count = atoi(optarg);
-//                break;
-//            
-//            default: /* '?' */
-//                fprintf(stderr, "Usage: %s [-t nsecs] [-n] name\n",
-//                        argv[0]);
-//                exit(EXIT_FAILURE);
-//        }
-//    }
-//    argc -= optind;
-//    argv += optind;
-//    if ((l_flag == 1) &&( p_flag == 1)){
-//        perror("cannot use -s and -l");
-//        exit(0);
-//    }
-    //*****************************************************************************************
+
     ///////////////////////// handling arguments ////////////////////////////
 
     
@@ -154,17 +85,14 @@ int main(int argc, char **argv) {
                 break;
             case 'p':
                 pflag = 1;
-                source_port = atoi(optarg);
-           printf("%s\n","1***********************");
+                source_port = optarg;
                 break;
             case 'w':
                 wflag = 1;
                 timeout = atoi(optarg);
-        printf("%s\n","2***********************");
                 break;
             default:
                 usage("");
-                printf("%s\n","3***********************");
                 exit(EXIT_FAILURE);
 
         }
@@ -195,7 +123,7 @@ int main(int argc, char **argv) {
     if (wflag) {
         printf("%s\n", "W");
     }
-    printf("%i\n", source_port);
+    printf("%s\n", source_port);
     printf("%i\n", timeout);
     printf("%s\n", hostname);
     printf("%s\n", port);
@@ -212,120 +140,17 @@ int main(int argc, char **argv) {
     hints.ai_socktype = SOCK_STREAM;
     // hints.ai_flags = AI_PASSIVE; // use my IP
     if(lflag){
-        printf("%s\n","local host mode");
         local_listen(hostname,port,hints);
-        
     }
     else{
         client_connect( hostname,port,  hints);
     }
-    
-//    if ((rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0) {
-//        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-//        return 1;
-//    }
-//
-//    
-//    // loop through all the results and bind to the first we can
-//    for(p = servinfo; p != NULL; p = p->ai_next) {
-//        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-//                             p->ai_protocol)) == -1) {
-//            perror("server: socket");
-//            continue;
-//        }
-//        
-//        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
-//                       sizeof(int)) == -1) {
-//            perror("setsockopt");
-//            exit(1);
-//        }
-//        
-//        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-//            close(sockfd);
-//            perror("server: bind");
-//            continue;
-//        }
-//        
-//        break;
-//    }
-//    
-//    freeaddrinfo(servinfo); // all done with this structure
-//    
-//    if (p == NULL)  {
-//        fprintf(stderr, "server: failed to bind\n");
-//        exit(1);
-//    }
-//    
-//    if (listen(sockfd, BACKLOG) == -1) {
-//        perror("listen");
-//        exit(1);
-//    }
-//    
-//    sa.sa_handler = sigchld_handler; // reap all dead processes
-//    sigemptyset(&sa.sa_mask);
-//    sa.sa_flags = SA_RESTART;
-//    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-//        perror("sigaction");
-//        exit(1);
-//    }
-//    
-//    printf("server: waiting for connections...\n");
-//    
-//    while(1) {  // main accept() loop
-//        sin_size = sizeof their_addr;
-//        new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
-//        if (new_fd == -1) {
-//            perror("accept");
-//            continue;
-//        }
-//        
-//        inet_ntop(their_addr.ss_family,
-//                  get_in_addr((struct sockaddr *)&their_addr),
-//                  s, sizeof s);
-//        printf("server: got connection from %s\n", s);
-////        
-//
-//// creating thread for
-//        pthread_t threads[2];
-//        int t_1 =  pthread_create(&threads[0],NULL,sending,new_fd);
-//        int t_2 =  pthread_create(&threads[1],NULL,receiving,new_fd);
-//        if (vflag) {
-//            if (lflag) {
-//                printf("Connection from %s %s port [%s/%s] succeeded!\n",
-//                       s, port, "udp" , "tcp",
-//                       servinfo ? p : "*");
-//                fprintf(stderr,"Connection from %s %s port [%s/%s] succeeded!\n",
-//                        s, port, "udp" , "tcp",
-//                        servinfo ? p : "*");
-//            }
-//            else {
-//                printf("Connection to %s %s port [%s/%s] succeeded!\n",
-//                       hostname, port, "udp" , "tcp",
-//                       servinfo ? p : "*");
-//                fprintf(stderr, "Connection to %s %s port [%s/%s] succeeded!\n",
-//                        hostname, port, "udp" , "tcp",
-//                        servinfo ? p :"*");
-//            
-//            }
-//
-//            
-//        }
-//        
-//    }
-    
+        
     return 0;
-    
-    
 }
 
-
-//    for (i = 0; i < argc; i++) {
-//      fprintf(stderr, "Arg %d is: %s\n", i, argv[i]);
-//      usage(argv[0]);
-//    }
-
 int local_listen(char*hostname,char*port, struct addrinfo hints){
-    int sockfd, new_fd;  // listen on sock_fd, new connection on new_fd
+    int sockfd;  // listen on sock_fd, new connection on new_fd
     struct addrinfo  *servinfo, *p;
     struct sockaddr_storage their_addr; // connector's address information
     socklen_t sin_size;
@@ -348,8 +173,7 @@ int local_listen(char*hostname,char*port, struct addrinfo hints){
             continue;
         }
         
-        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
-                       sizeof(int)) == -1) {
+        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
             perror("setsockopt");
             exit(1);
         }
@@ -386,72 +210,63 @@ int local_listen(char*hostname,char*port, struct addrinfo hints){
     printf("server: waiting for connections...\n");
     
          // main accept() loop
-    pthread_t thread_id;
+    
+    int max = 1;
+    if (rflag)
+    	max = 2;
     while (1) {
-        client_state = 1;
-        sin_size = sizeof their_addr;
-        new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
-        if (new_fd == -1) {
-            perror("accept");
-            continue;
-        }
-        
-        
-        inet_ntop(their_addr.ss_family,
-                  get_in_addr((struct sockaddr *)&their_addr),
-                  s, sizeof s);
-        printf("server: got connection from %s\n", s);
-        //
-        
-        // creating thread for hand reading
-//        pthread_t threads[2];
-//        int t_1 =  pthread_create(&threads[0],NULL,sending,new_fd);
-//        int t_2 =  pthread_create(&threads[1],NULL,receiving,new_fd);
-        pthread_create( &thread_id , NULL ,  read_write , new_fd);
+
+    	while(count < max) {
+    		int new_fd;
+    		printf("%s\n", "LOOPING");
+    		printf("%s", "Count = ");
+    		printf("%i\n", count);
+    		sin_size = sizeof their_addr;
+        	new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
+        	count++;
+        	printf("%s", "Count = ");
+    		printf("%i\n", count);
+	        if (new_fd == -1) {
+	            perror("accept");
+	            continue;
+	        }
+	        
+	        inet_ntop(their_addr.ss_family,
+	                  get_in_addr((struct sockaddr *)&their_addr),
+	                  s, sizeof s);
+	        printf("server: got connection from %s\n", s);
+
+	        if(1) {
+	        	pthread_t thread_id;
+	        	pthread_create( &thread_id , NULL ,  readWrite , new_fd);
+	        	//pthread_join(thread_id, NULL);
+	        	//printf("%s\n", "KILLED");
+	        	//exit(0);
+	        }
     
-           //
-        if (vflag) {
-            if (lflag) {
-                printf("Connection from %s %s port [%s/%s] succeeded!\n",
-                       s, port, "udp" , "tcp",
-                       servinfo ? p : "*");
-                fprintf(stderr,"Connection from %s %s port [%s/%s] succeeded!\n",
-                        s, port, "udp" , "tcp",
-                        servinfo ? p : "*");
-            }
-            else {
-                printf("Connection to %s %s port [%s/%s] succeeded!\n",
-                       hostname, port, "udp" , "tcp",
-                       servinfo ? p : "*");
-                fprintf(stderr, "Connection to %s %s port [%s/%s] succeeded!\n",
-                        hostname, port, "udp" , "tcp",
-                        servinfo ? p :"*");
-                
-            }
-        }
-            while (1) {
-                if (client_state == 0) {
-                    break;
-                }
-            }
-            close(new_fd);
-            if (!kflag) { // if k is not used
-                break;
-            }
+	        if (vflag) {
+	            if (lflag) {
+	                printf("Connection from %s %s port [%s/%s] succeeded!\n",
+	                       s, port, "udp" , "tcp",
+	                       servinfo ? p : "*");
+	                fprintf(stderr,"Connection from %s %s port [%s/%s] succeeded!\n",
+	                        s, port, "udp" , "tcp",
+	                        servinfo ? p : "*");
+	            }
+	            else {
+	                printf("Connection to %s %s port [%s/%s] succeeded!\n",
+	                       hostname, port, "udp" , "tcp",
+	                       servinfo ? p : "*");
+	                fprintf(stderr, "Connection to %s %s port [%s/%s] succeeded!\n",
+	                        hostname, port, "udp" , "tcp",
+	                        servinfo ? p :"*");
+	                
+	            }
+	        }
+    	}
     }
-            close(sockfd);  // close
-            pthread_kill(thread_id,0);
-            return 0;
-            
-            
-        
-//        if((!kflag)&&(client_state==0))  // if not -k just stop
-//            break;
-//        
-    
-
-
-
+    close(sockfd);  // close
+    return 0;            
 }
 
 void handle_timeout(int sig) {
@@ -467,12 +282,23 @@ void* sending(int new_fd){
             alarm(timeout);
         }
         //int numbytes;
-        char str[512];
-        scanf("%s",str);
+        char str[512] = "";
+        printf("%s\n", "Server scaning");
+        int len = scanf("%s",str);
         str[strlen(str)] = '\n';
-        send(new_fd, str, strlen(str), 0);
+        str[strlen(str)] = '\0';
+        printf("%i\n", strlen(str));
+        int id = 0;
+        if ((id = send(new_fd, str, strlen(str), 0)) == -1) {
+            return 0;
+        } else if (id == 0) {
+            return 0;
+        }
+        if (count < 0 && !lflag) {
+        	printf("%s\n", "BREAK");
+        	exit(0);
+        }
     }
-    return 0;
 }
 
 void* receiving(int new_fd){
@@ -485,12 +311,16 @@ void* receiving(int new_fd){
         int numbytes;
         char buf[512];
         if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
-            client_state = 0;
+            count--;
+            printf("%s", "Count = ");
+    		printf("%i\n", count);
             perror("recv");
-
+            return 0;
         }
         else if (numbytes == 0) {
-            client_state = 0;
+            count--;
+            printf("%s", "Count = ");
+    		printf("%i\n", count);
             return 0;
 
         }
@@ -499,19 +329,82 @@ void* receiving(int new_fd){
         
         
     }
-    return 0;
 }
-// read_write handle read and write at te same time
 
 
 void* read_write(int new_fd){
     
-    pthread_t threads[2];
-    int t_1 =  pthread_create(&threads[0],NULL,sending,new_fd);
-    int t_2 =  pthread_create(&threads[1],NULL,receiving,new_fd);
+    pthread_t t1, t2;
+    pthread_create(&t1,NULL,sending,new_fd);
+    pthread_create(&t2,NULL,receiving,new_fd);
+    //pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+    pthread_kill(t1, 0);
+    printf("%s\n", "SUB KILLED");    
+}
+
+void* readWrite(int new_fd) {
+    if(!fork()) {
+        printf("Sending Thread Created\n");
+        while (1) {
+            if (wflag && !lflag) {
+                signal(SIGALRM, handle_timeout);
+                alarm(timeout);
+            }
+            //int numbytes;
+            char str[512] = "";
+            int len = scanf("%s",str);
+            str[strlen(str)] = '\n';
+            str[strlen(str)] = '\0';
+            int id = 0;
+            if ((id = send(new_fd, str, strlen(str), 0)) == -1) {
+                exit(0);
+            } else if (id == 0) {
+                exit(0);
+            }
+            if (count < 0 && !lflag) {
+                printf("%s\n", "BREAK");
+                exit(0);
+            }
+        }
+    }
     
+    printf("Receiving Thread Created\n");
+    while (1) {
+        if (wflag && !lflag) {
+            signal(SIGALRM, handle_timeout);
+            alarm(timeout);
+        }
+        int numbytes;
+        char buf[512];
+        if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
+            count--;
+            printf("%s", "Count = ");
+            printf("%i\n", count);
+            perror("recv");
+            if (count == 0 && !kflag) {
+                exit(0);
+            }
+            return 0;
+        }
+        else if (numbytes == 0) {
+            count--;
+            printf("%s", "Count = ");
+            printf("%i\n", count);
+            if (count == 0 && !kflag) {
+                exit(0);
+            }
+            return 0;
+
+        }
+        buf[numbytes] = '\0';
+        printf("%s",buf);
+        
+        
+    }
 
 }
+
 int client_connect(char* hostname,char* port, struct addrinfo hints){
     int rv;
     int numbytes;
@@ -522,6 +415,8 @@ int client_connect(char* hostname,char* port, struct addrinfo hints){
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
+
+
     if ((rv = getaddrinfo(hostname, port, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
         return 1;
@@ -541,25 +436,25 @@ int client_connect(char* hostname,char* port, struct addrinfo hints){
         
         break;
     }
+
     if (p == NULL) {
         fprintf(stderr, "client: failed to connect\n");
         return 2;
     }
+
+    if (pflag) {
+		struct sockaddr_in addrForSourcePort;
+		addrForSourcePort.sin_family =AF_INET;
+		addrForSourcePort.sin_port = htons(atoi(source_port));
+		addrForSourcePort.sin_addr.s_addr = INADDR_ANY;
+		bind(sockfd, (struct sockaddr*)&addrForSourcePort, sizeof addrForSourcePort);
+	}  
     
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
               s, sizeof s);
     printf("client: connecting to %s\n", s);
     
     freeaddrinfo(servinfo); // all done with this structure
-    
-    //if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-    //    perror("recv");
-    //    exit(1);
-    //}
-    
-    //buf[numbytes] = '\0';
-    
-    //printf("client: received '%s'\n",buf);
     
     pthread_t thread_id;
     pthread_create( &thread_id , NULL ,  read_write , sockfd);
