@@ -239,8 +239,7 @@ int client_connect(char* hostname,char* port, struct addrinfo hints){
     
     freeaddrinfo(servinfo); // all done with this structure
     
-    pthread_t thread_id;
-    pthread_create( &thread_id , NULL ,  readWrite , sockfd);
+    readWrite(sockfd);
     
     while (1) {
     
@@ -337,8 +336,6 @@ int local_listen(char*hostname,char*port, struct addrinfo hints){
             if (!fork()) {
             	readWrite(new_fd);
             }
-            //pthread_t thread_id;
-            //pthread_create( &thread_id , NULL ,  readWrite , new_fd);
     
             if (vflag) {
                 if (lflag) {
