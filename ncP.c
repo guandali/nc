@@ -18,7 +18,7 @@
 int kflag, lflag, vflag, rflag, pflag, wflag, opt;
 int count = 0;
 char* source_port;
-int timeout;
+int timeout = -1;
 #define PORT "3490"
 #define BACKLOG 10
 #define MAXDATASIZE 100
@@ -316,13 +316,46 @@ int local_listen(char*hostname,char*port, struct addrinfo hints){
     int max = 1;
     if (rflag)
         max = 10;
+    struct pollfd pollfds[10];
     while (1) {
 
-        while(count < max) {
+        while(count <= max) {
             int new_fd;
             sin_size = sizeof their_addr;
+            int sid, rid;
+            if (!(sid = fork())) {
+            	while(1) {
+            		char str[512] = "";
+            		int len = scanf("%s",str);
+            		str[strlen(str)] = '\n';
+            		str[strlen(str)] = '\0';
+            		for(int i = 0; i < count; i++) {
+            			send(pollfds[i].fd, str, strlen(str), 0);
+            		}
+            	}
+            }
+            if (!(rid = fork())) {
+            	while(1) {
+            		int rv = poll(pollfds, count, timeout);
+            		for (int i = 0; i < count; i ++) {
+            			if (pollfds[i].revents & POLLIN) {
+            				int rv;
+            				char buf[512];
+            				rv = recv(pollfds[i].fd, buf, 512, 0);
+            				if (rv == -1) {
+
+            				} else if (rv == 0) {
+
+            				} else {
+            					buf[rv] = '\0';
+            					printf("%s", buf);
+            				}
+            			}
+            		}
+            	}
+            }
             new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
-            count++;
+            
             if (new_fd == -1) {
                 perror("accept");
                 continue;
@@ -333,29 +366,12 @@ int local_listen(char*hostname,char*port, struct addrinfo hints){
                       s, sizeof s);
             printf("server: got connection from %s\n", s);
 
-            if (!fork()) {
-            	readWrite(new_fd);
-            }
-    
-            if (vflag) {
-                if (lflag) {
-                    printf("Connection from %s %s port [%s/%s] succeeded!\n",
-                           s, port, "udp" , "tcp",
-                           servinfo ? p : "*");
-                    fprintf(stderr,"Connection from %s %s port [%s/%s] succeeded!\n",
-                            s, port, "udp" , "tcp",
-                            servinfo ? p : "*");
-                }
-                else {
-                    printf("Connection to %s %s port [%s/%s] succeeded!\n",
-                           hostname, port, "udp" , "tcp",
-                           servinfo ? p : "*");
-                    fprintf(stderr, "Connection to %s %s port [%s/%s] succeeded!\n",
-                            hostname, port, "udp" , "tcp",
-                            servinfo ? p :"*");
-                    
-                }
-            }
+            pollfds[count].fd = new_fd;
+            pollfds[count].events = POLLIN;
+    		count++;
+
+            kill(rid, SIGKILL);
+            kill(sid, SIGKILL);
         }
     }
     close(sockfd);  // close
