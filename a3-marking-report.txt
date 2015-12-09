@@ -1,0 +1,79 @@
+Total before late penalty: [64/77]
+
+NOTE: in the marking report something left blank (e.g.  [ /6]) typically means
+that you got full marks for that item. 
+
+
+[10/13] Generic Functionality and error handling
+   [0/1] Programs properly compile using a makefile
+   [/4] Consistently checks and acts appropriately for all return values for system calls (e.g. read, write, accept, listen, connect, recv, etc)
+   [/2] Can handle short writes to both sockets and standard output
+   [/2] Can read, transmit and write ASCII data from standard input or a socket to standard output or a socket(s) as appropriate
+   [0/2] Can read and properly transmit and write binary data from standard input or a socket to standard output and/or sockets
+   [/2] Implementation of -v	
+
+[/6]   Command line option processing: 	
+   [/2] Detects -k, -l and -r
+   [/1] Detects -p and port number
+   [/1] Detects -w and value
+   [/1] Detects host name
+   [/1] Detects port number
+
+[8/9] Client functionality using threads:
+   [/2] Connects to server on specified port
+   [0/1] -P option uses the provided port
+   [/4] Can interleave I/O, doesn't have to take turns    
+   [/2] Properly handles -w to timeout client
+
+
+[8/9] Client functionality using poll 
+   [/2] Connects to server on specified port
+   [0/1] -P option uses the provided port
+   [/4] Can interleave I/O, doesn't have to take turns    
+   [/2] Properly handles -w to timeout client
+
+
+[6/10] Server functionality using threads
+   [/1] -l alone accepts a connection and exits when client disconnects
+   [/1] -k continually accepts a new connection after the existing one closes
+   [/2] Can interleave I/O, doesn't have to take turns   	   
+   [1/1] -r without -k exits when last client exits
+   [1/1] -r with -k keeps accepting connections when client count go to 0
+   [0/4] -r interleaves I/O and re-sends to all attached clients except
+   the source  
+
+[6/10] Server functionality using poll 
+   [/1] -l alone accepts a connection and exits when client disconnects
+   [/1] -k continually accepts a new connection after the existing one closes
+   [/2] Can interleave I/O, doesn't have to take turns   	   
+   [0/1] -r without -k exits when last client exits
+   [/1] -r with -k keeps accepting connections when client count go to 0
+   [1/4] -r interleaves I/O and re-sends to all attached clients except
+   the source  
+   * Only server can broadcast to clients
+
+[/20] PROGRAM STRUCTURE AND STYLE: 
+
+   [/3] Easy to read, appropriate layout, lines aren't too long, blank
+     lines delineating blocks of code functionality. (Basically 
+     does it look good and is easy to read.) 
+
+   [/3] Blocks of code commented. Is it clear what functionality each
+     block of code is responsible for? Is it clear what variables are
+     being used for? 
+
+   [/3] Code is decomposed into functions. There shouldn't be long
+     blocks of code or repeated code. In particular code that is
+     common to the threaded and poll versions must not be repeated.
+
+   [/4] Reasonable choice of algorithms and problem solving
+     approach. (e.g. how is the "list" of file desciptors to send to
+     maintained, how is connection termination handled, program
+     doesn't busy wait ...)
+    
+
+   [/2] Regular use of git to push changes to stash.
+
+   [/5] Marker's discretion 
+
+MARKER'S ADDITIONAL COMMENTS:
